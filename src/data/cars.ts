@@ -13,14 +13,16 @@ export interface Car {
   transmission: "automatic" | "manual";
   power: number; // hp
   color: string;
-  /** gradient used as a placeholder visual until real photos are wired in */
+  /** gradient placeholder shown behind / until the photo loads */
   gradient: string;
+  /** real photo in /public/cars (falls back to the gradient if absent) */
+  image?: string;
   featured?: boolean;
 }
 
 // Каталог LevelAuto — работаем только с китайскими премиум-EV брендами:
 // VOYAH, ZEEKR, XPENG, LEAPMOTOR, ROEWE. Заглушка под реальный фид/CMS.
-export const cars: Car[] = [
+const seedCars: Car[] = [
   // ---------------------------- VOYAH ----------------------------
   {
     id: "voyah-free-2025",
@@ -216,6 +218,9 @@ export const cars: Car[] = [
     gradient: "from-amber-900 via-zinc-900 to-black",
   },
 ];
+
+// Attach the real photo for each car (public/cars/<id>.jpg).
+export const cars: Car[] = seedCars.map((c) => ({ ...c, image: `/cars/${c.id}.jpg` }));
 
 export const brands = [...new Set(cars.map((c) => c.brand))].sort();
 export const bodies: Body[] = ["sedan", "suv", "coupe", "crossover"];

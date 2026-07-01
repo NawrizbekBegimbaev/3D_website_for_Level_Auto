@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 type Props = {
   children: React.ReactNode;
@@ -9,8 +9,11 @@ type Props = {
   y?: number;
 };
 
-/** Scroll-triggered fade + rise. Animates once when it enters the viewport. */
+/** Scroll-triggered fade + rise. Animates once when it enters the viewport.
+ *  Falls back to a static block when the user prefers reduced motion. */
 export function Reveal({ children, className, delay = 0, y = 24 }: Props) {
+  const reduce = useReducedMotion();
+  if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
       className={className}

@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Playfair_Display, Manrope } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/i18n/locale-context";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
-const inter = Inter({
-  variable: "--font-inter",
+// Paired type: a high-contrast display serif for headlines + a modern
+// grotesque for body — neither is Inter/Roboto. Both carry Cyrillic (RU/UZ).
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin", "cyrillic"],
   display: "swap",
 });
@@ -27,7 +34,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" className={`${inter.variable} h-full`}>
+    <html lang="ru" className={`${playfair.variable} ${manrope.variable} h-full`}>
       <body className="flex min-h-full flex-col antialiased">
         <LocaleProvider>
           <Header />

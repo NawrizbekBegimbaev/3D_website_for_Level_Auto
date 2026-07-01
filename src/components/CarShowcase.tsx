@@ -23,7 +23,7 @@ import { useLocale } from "@/i18n/locale-context";
 import { ContactForm } from "./ContactForm";
 import { Logo } from "./Logo";
 
-const MODEL_URL = "/models/zeekr_7x_2025.glb";
+const MODEL_URL = "/models/zeekr_7x_2025_v4.glb";
 
 /** GLB material names to force near-black (murdered-out look): tires, the
  *  rims / discs and the red trim + light bar. Names are the model's own. */
@@ -80,14 +80,15 @@ const POS_TL = "absolute left-5 top-44 hidden sm:left-10 sm:top-52 sm:block";
 const POS_TR = "absolute right-5 top-44 hidden sm:right-10 sm:top-52 sm:block";
 const POS_BR = "absolute right-5 bottom-28 hidden sm:right-10 sm:bottom-32 sm:block";
 const CTA_PRIMARY =
-  "pointer-events-auto rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover glow-accent";
+  "pointer-events-auto rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-all duration-200 hover:scale-[1.03] hover:bg-accent-hover active:scale-95 glow-accent";
 
 /* ----------------------------- 3D model ----------------------------- */
 
 function CarModel({ progress }: { progress: RefObject<number> }) {
   const group = useRef<THREE.Group>(null);
-  // `true` enables the Draco decoder (no-op for an uncompressed glb).
-  const { scene } = useGLTF(MODEL_URL, true);
+  // meshopt-compressed geometry (5.6 MB vs 30 MB). drei bundles the meshopt
+  // decoder locally — no CDN — so it loads reliably on mobile too. (draco off)
+  const { scene } = useGLTF(MODEL_URL, false, true);
 
   // Clone, strip the baked-in studio floor/podium, then measure: centre at
   // origin and normalise the diagonal so the car fills the frame regardless of
@@ -169,7 +170,7 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
   );
 }
 
-useGLTF.preload(MODEL_URL);
+useGLTF.preload(MODEL_URL, false, true);
 
 /* --------------------------- colour helpers --------------------------- */
 
@@ -350,7 +351,7 @@ export function CarShowcase() {
                   key={i}
                   className="rounded-2xl border border-white/15 bg-black/55 p-3 text-center backdrop-blur-md"
                 >
-                  <p className="text-2xl font-semibold text-accent">{s.v}</p>
+                  <p className="font-display text-2xl font-semibold text-accent">{s.v}</p>
                   <p className="mt-0.5 text-[11px] leading-tight text-white/80">{s.l}</p>
                 </div>
               ))}
@@ -387,7 +388,7 @@ export function CarShowcase() {
                   </a>
                 </div>
 
-                <div className="mt-8 flex flex-col gap-1 border-t border-white/15 pt-4 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mt-8 flex flex-col gap-1 border-t border-white/15 pt-4 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
                   <span>© {new Date().getFullYear()} LevelAuto. {t.footer.rights}</span>
                   <span>Tashkent · Uzbekistan</span>
                 </div>
@@ -406,23 +407,28 @@ export function CarShowcase() {
           <Link href="/catalog" className={CTA_PRIMARY}>{t.hero.cta}</Link>
         </div>
 
-        {/* left: vertical arrows + position number (always visible) */}
-        <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 sm:left-10">
+        {/* left: vertical arrows + position number (hidden on mobile for the
+            form/footer stages, where it would sit over the panel text) */}
+        <div
+          className={`pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 flex-col items-center gap-3 sm:left-10 sm:flex ${
+            stage >= 3 ? "hidden" : "flex"
+          }`}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="opacity-70">
             <path d="M12 19V5M5 12l7-7 7 7" />
           </svg>
           <span className="text-sm font-medium tracking-widest text-white">
             <span ref={idxRef}>01</span>
-            <span className="text-white/50"> / 0{COLOR_STOPS.length}</span>
+            <span className="text-white/70"> / 0{COLOR_STOPS.length}</span>
           </span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="opacity-70">
             <path d="M12 5v14M5 12l7 7 7-7" />
           </svg>
         </div>
 
-        {/* bottom: spec row + full details */}
+        {/* bottom: spec row — desktop only (on mobile it collides with the CTA) */}
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-8 transition-opacity duration-700 sm:px-10 ${
+          className={`pointer-events-none absolute inset-x-0 bottom-0 hidden px-5 pb-8 transition-opacity duration-700 sm:block sm:px-10 ${
             stage >= 3 ? "opacity-0" : "opacity-100"
           }`}
         >
@@ -504,7 +510,7 @@ function InfoCard({
 function StatCard({ value, label, className = "" }: { value: string; label: string; className?: string }) {
   return (
     <div className={`w-[min(42vw,220px)] rounded-2xl border border-white/15 bg-black/45 p-4 text-center backdrop-blur-md ${className}`}>
-      <p className="text-4xl font-semibold text-accent sm:text-5xl">{value}</p>
+      <p className="font-display text-4xl font-semibold text-accent sm:text-5xl">{value}</p>
       <p className="mt-1 text-xs text-white/80 sm:text-sm">{label}</p>
     </div>
   );

@@ -15,7 +15,7 @@ export function ContactForm({ subject }: { subject?: string }) {
   };
 
   const inputClass =
-    "w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-muted/60 focus:border-accent";
+    "w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
 
   if (status === "done") {
     return (
@@ -43,7 +43,7 @@ export function ContactForm({ subject }: { subject?: string }) {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+        className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
       >
         {status === "sending" ? t.contact.sending : t.contact.send}
       </button>
