@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from "react";
 import Link from "next/link";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   useGLTF,
   Environment,
@@ -136,6 +136,16 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
     };
   }, [scene]);
 
+  // Shrink the car on narrow / portrait screens so the whole body stays in
+  // frame. On wide desktop viewports the factor clamps to 1 (no change).
+  const { size } = useThree();
+  const isMobile = size.width < 640;
+  const fitFactor = Math.min(1, (size.width / size.height) * 0.85);
+  // On desktop the contact/footer stages slide the car into the left half
+  // (form on the right). On mobile the panel is full-width, so keep the car
+  // centred — otherwise it slides off the left edge.
+  const focusLeftX = isMobile ? 0 : FOCUS_LEFT_X;
+
   useFrame((_, delta) => {
     if (!group.current) return;
     const g = group.current;
@@ -152,8 +162,9 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
     targetY = THREE.MathUtils.lerp(targetY, REAR_Y, rear);
     // X: gentle tilt that peaks mid-scroll; flattens as the car faces us.
     const targetX = Math.sin(p * Math.PI) * 0.5 * (1 - focus);
-    // Slide into the left half and move closer, freeing the right half.
-    const targetPosX = FOCUS_LEFT_X * focus;
+    // Slide into the left half and move closer, freeing the right half
+    // (desktop only — centred on mobile).
+    const targetPosX = focusLeftX * focus;
     const targetScale = 1 + (FOCUS_ZOOM - 1) * focus;
     g.rotation.y = THREE.MathUtils.damp(g.rotation.y, targetY, 4, delta);
     g.rotation.x = THREE.MathUtils.damp(g.rotation.x, targetX, 4, delta);
@@ -163,7 +174,7 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
 
   return (
     <group ref={group} dispose={null}>
-      <group scale={scale}>
+      <group scale={scale * fitFactor}>
         <primitive object={model} position={[-center.x, -center.y, -center.z]} />
       </group>
     </group>
@@ -274,7 +285,9 @@ export function CarShowcase() {
           <directionalLight position={[5, 8, 6]} intensity={2.4} />
           <directionalLight position={[-7, 4, -5]} intensity={1.1} />
           <Suspense fallback={null}>
-            <Environment preset="studio" />
+            {/* Local studio HDRI (same asset drei's "studio" preset uses) —
+                served from our own CDN, no external dependency. */}
+            <Environment files="/hdri/studio.hdr" />
             <CarModel progress={progress} />
             <ContactShadows position={[0, -1.9, 0]} opacity={0.5} scale={16} blur={2.8} far={4.5} />
           </Suspense>
