@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { useLocale } from "@/i18n/locale-context";
 
 export function Footer() {
   const { t } = useLocale();
+  const pathname = usePathname();
+  // The home page carries the footer inside the 3D showcase (final stage),
+  // so the global footer is suppressed there to avoid a duplicate.
+  if (pathname === "/") return null;
+
   return (
     <footer className="border-t border-border bg-surface/40">
       <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:grid-cols-3">

@@ -1,6 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
@@ -12,8 +20,24 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 import { useLocale } from "@/i18n/locale-context";
+import { ContactForm } from "./ContactForm";
+import { Logo } from "./Logo";
 
 const MODEL_URL = "/models/zeekr_7x_2025.glb";
+
+/** GLB material names to force near-black (murdered-out look): tires, the
+ *  rims / discs and the red trim + light bar. Names are the model's own. */
+const BLACKEN = new Set([
+  "luntai", // tires
+  "lungujinshu", // rim metal
+  "lunguhei", // rim black
+  "lunguhei2", // rim (reddish) trim
+  "lunguluosi", // wheel bolts
+  "deng_red", // red light bar / trim
+  "deng_red2",
+  "moshahei", // lower sill / body cladding — named "matte black" but ships untinted (renders grey)
+  "fanguangjin", // bright chrome side moulding
+]);
 
 /** Rest pose: car sits in profile (side view). Flip sign / use 0 if your
  *  model's "front" faces a different axis. */
@@ -22,9 +46,19 @@ const REST_Y = Math.PI / 2;
 /** How large the car renders. Bigger = fills more of the screen. */
 const FIT = 6.4;
 
+/** Final two stages ("contact" + "footer"): the car stops tumbling, turns to
+ *  face the camera, slides into the LEFT half and moves closer — freeing the
+ *  right half first for the request form, then for the footer. `focus` ramps
+ *  0→1 as we enter those stages and holds to the end. */
+const FRONT_Y = Math.PI; // contact stage: faces the camera (flip to 0 if the rear shows)
+const REAR_Y = FRONT_Y + Math.PI; // footer stage: same pose but rear turned to us
+const FOCUS_LEFT_X = -2.1; // shift into the left half
+const FOCUS_ZOOM = 1.5; // how much closer / bigger the car gets when focused
+
 /** Scroll journey colours — starts on the site's own background (#08080a) and
- *  deepens toward the brand red, so the section blends with the rest of the site. */
-const COLOR_STOPS = ["#08080a", "#13131a", "#3a1518", "#7f1d1d"];
+ *  deepens toward the brand red, which then holds across the contact + footer
+ *  stages so the car keeps the same lit backdrop through to the end. */
+const COLOR_STOPS = ["#08080a", "#13131a", "#3a1518", "#7f1d1d", "#7f1d1d"];
 
 /** Static car metadata for the showcase HUD (the hero model). */
 const SHOWCASE = {
@@ -37,6 +71,16 @@ const SHOWCASE = {
   mileageKm: 0,
   hp: 639,
 };
+
+/* Shared positions for the text that surrounds the car per scroll stage. */
+const HEADING_WRAP = "absolute inset-x-0 top-24 px-5 text-center sm:top-28";
+// Floating corner cards are desktop-only; on mobile the stage content is
+// collapsed into a single bottom panel (see the `sm:hidden` blocks per stage).
+const POS_TL = "absolute left-5 top-44 hidden sm:left-10 sm:top-52 sm:block";
+const POS_TR = "absolute right-5 top-44 hidden sm:right-10 sm:top-52 sm:block";
+const POS_BR = "absolute right-5 bottom-28 hidden sm:right-10 sm:bottom-32 sm:block";
+const CTA_PRIMARY =
+  "pointer-events-auto rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover glow-accent";
 
 /* ----------------------------- 3D model ----------------------------- */
 
@@ -52,8 +96,35 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
   const { model, scale, center } = useMemo(() => {
     const cloned = scene.clone(true);
     const junk: THREE.Object3D[] = [];
+    // Recolor targeted materials to black. Clone the material first so the
+    // shared/cached GLTF material (reused elsewhere) is never mutated.
+    const blacken = (m: THREE.Material) => {
+      if (!m || !BLACKEN.has(m.name)) return m;
+      const c = m.clone() as THREE.MeshStandardMaterial;
+      c.color?.setRGB(0.02, 0.02, 0.02);
+      c.emissive?.setRGB(0, 0, 0);
+      // Tires ship with a grey tread texture and catch grey studio reflections.
+      // Force a true matte black: drop the base texture and mute the env map.
+      if (m.name === "luntai") {
+        c.map = null;
+        c.color?.setRGB(0, 0, 0);
+        c.roughness = 1;
+        c.metalness = 0;
+        c.envMapIntensity = 0.1;
+        c.needsUpdate = true;
+      }
+      return c;
+    };
     cloned.traverse((o) => {
-      if (/carplane|floor/i.test(o.name)) junk.push(o);
+      if (/carplane|floor/i.test(o.name)) {
+        junk.push(o);
+        return;
+      }
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(blacken)
+        : blacken(mesh.material);
     });
     junk.forEach((o) => o.removeFromParent());
     const box = new THREE.Box3().setFromObject(cloned);
@@ -66,13 +137,27 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
 
   useFrame((_, delta) => {
     if (!group.current) return;
+    const g = group.current;
     const p = progress.current;
-    // Y: full 360° tumble bound to scroll, starting from the profile pose.
-    const targetY = REST_Y + p * Math.PI * 2;
-    // X: gentle tilt that peaks mid-scroll so the roof / top becomes visible.
-    const targetX = Math.sin(p * Math.PI) * 0.5;
-    group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, targetY, 4, delta);
-    group.current.rotation.x = THREE.MathUtils.damp(group.current.rotation.x, targetX, 4, delta);
+    // focus: 0 during the tumble, ramps to 1 as we reach the contact stage and
+    // holds through the footer stage — same left/zoom hero pose for both.
+    const focus = THREE.MathUtils.smoothstep(p, 0.58, 0.68);
+    // rear: on the footer stage the car keeps that pose but turns its back to us
+    // (settled by ~0.9, the footer snap anchor).
+    const rear = THREE.MathUtils.smoothstep(p, 0.8, 0.9);
+    // Y: full 360° tumble, turned to the front (contact) then round to the rear.
+    const tumbleY = REST_Y + p * Math.PI * 2;
+    let targetY = THREE.MathUtils.lerp(tumbleY, FRONT_Y, focus);
+    targetY = THREE.MathUtils.lerp(targetY, REAR_Y, rear);
+    // X: gentle tilt that peaks mid-scroll; flattens as the car faces us.
+    const targetX = Math.sin(p * Math.PI) * 0.5 * (1 - focus);
+    // Slide into the left half and move closer, freeing the right half.
+    const targetPosX = FOCUS_LEFT_X * focus;
+    const targetScale = 1 + (FOCUS_ZOOM - 1) * focus;
+    g.rotation.y = THREE.MathUtils.damp(g.rotation.y, targetY, 4, delta);
+    g.rotation.x = THREE.MathUtils.damp(g.rotation.x, targetX, 4, delta);
+    g.position.x = THREE.MathUtils.damp(g.position.x, targetPosX, 4, delta);
+    g.scale.setScalar(THREE.MathUtils.damp(g.scale.x, targetScale, 4, delta));
   });
 
   return (
@@ -128,12 +213,17 @@ export function CarShowcase() {
   const [stage, setStage] = useState(0);
   const stageRef = useRef(0);
 
-  // 4 text blocks revealed across the 4 positions — the former Hero content.
-  const slides = [
-    { a: t.hero.title, b: t.hero.titleAccent, sub: t.hero.subtitle, eyebrow: t.hero.eyebrow },
-    { a: "", b: t.hero.stat1, sub: t.hero.stat1l, eyebrow: "" },
-    { a: "", b: t.hero.stat2, sub: t.hero.stat2l, eyebrow: "" },
-    { a: "", b: t.hero.stat3, sub: t.hero.stat3l, eyebrow: "" },
+  // Content that surrounds the car across the 4 scroll stages:
+  // 01 intro · 02 why LevelAuto · 03 stats · 04 contact.
+  const reasons = [
+    { t: t.about.p1t, b: t.about.p1b },
+    { t: t.about.p2t, b: t.about.p2b },
+    { t: t.about.p3t, b: t.about.p3b },
+  ];
+  const stats = [
+    { v: t.hero.stat1, l: t.hero.stat1l },
+    { v: t.hero.stat2, l: t.hero.stat2l },
+    { v: t.hero.stat3, l: t.hero.stat3l },
   ];
 
   // Native page-scroll progress (0→1) for this section. Drives BOTH the DOM
@@ -165,7 +255,7 @@ export function CarShowcase() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative h-[320vh] w-full">
+    <section ref={sectionRef} className="relative h-[400vh] w-full">
       {/* Pinned full-screen viewport */}
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         {/* scroll-driven colour layer (behind the transparent canvas) */}
@@ -193,60 +283,130 @@ export function CarShowcase() {
         {/* ============================ HUD ============================ */}
         {/* (the global <Header /> renders on top — no separate top bar here) */}
 
-        {/* centre top: changing Hero text — crossfades per scroll position */}
-        <div className="pointer-events-none absolute inset-x-0 top-24 px-5 sm:top-28">
-          <div className="relative mx-auto h-44 max-w-3xl text-center sm:h-48">
-            {slides.map((s, i) => (
-              <div
-                key={i}
-                className={`absolute inset-0 transition-all duration-700 ${
-                  stage === i ? "opacity-100 blur-0 translate-y-0" : "pointer-events-none opacity-0 blur-[2px] translate-y-3"
-                }`}
-              >
-                {s.eyebrow && (
-                  <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
-                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                    {s.eyebrow}
-                  </span>
-                )}
-                <h2 className="text-4xl font-semibold leading-[1.05] tracking-tight text-white drop-shadow sm:text-6xl">
-                  {s.a && <span className="text-gradient">{s.a} </span>}
-                  {s.b && <span className="text-accent">{s.b}</span>}
+        {/* Text that surrounds the car — one layer per scroll stage, crossfaded. */}
+        <div className="pointer-events-none absolute inset-0">
+          {/* 01 — intro */}
+          <Stage active={stage === 0}>
+            <div className={HEADING_WRAP}>
+              <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                {t.hero.eyebrow}
+              </span>
+              <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-white drop-shadow sm:text-6xl">
+                <span className="text-gradient">{t.hero.title} </span>
+                <span className="text-accent">{t.hero.titleAccent}</span>
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-sm text-white/80 sm:text-base">{t.hero.subtitle}</p>
+            </div>
+            <div className="absolute right-5 top-44 hidden text-right sm:right-10 sm:top-52 sm:block">
+              <p className="text-2xl font-semibold text-white drop-shadow sm:text-3xl">
+                {SHOWCASE.brand} {SHOWCASE.model}
+              </p>
+              <p className="mt-1 text-base text-white/80 sm:text-lg">{SHOWCASE.city}</p>
+            </div>
+          </Stage>
+
+          {/* 02 — why LevelAuto: three reasons around the car */}
+          <Stage active={stage === 1}>
+            <div className={HEADING_WRAP}>
+              <h2 className="text-3xl font-semibold tracking-tight text-white drop-shadow sm:text-5xl">
+                <span className="text-gradient">{t.about.title}</span>
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-sm text-white/80 sm:text-base">{t.about.body}</p>
+            </div>
+            <InfoCard className={POS_TL} index="01" title={reasons[0].t} body={reasons[0].b} />
+            <InfoCard className={POS_TR} index="02" title={reasons[1].t} body={reasons[1].b} />
+            <InfoCard className={POS_BR} index="03" title={reasons[2].t} body={reasons[2].b} />
+            {/* mobile: one compact panel instead of floating cards */}
+            <div className="absolute inset-x-4 bottom-24 rounded-2xl border border-white/15 bg-black/55 p-4 backdrop-blur-md sm:hidden">
+              <ul className="space-y-3">
+                {reasons.map((r, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="text-xs font-semibold text-accent">0{i + 1}</span>
+                    <div>
+                      <p className="text-sm font-semibold leading-tight text-white">{r.t}</p>
+                      <p className="mt-0.5 text-xs text-white/70">{r.b}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Stage>
+
+          {/* 03 — stats */}
+          <Stage active={stage === 2}>
+            <div className={HEADING_WRAP}>
+              <h2 className="text-3xl font-semibold tracking-tight text-white drop-shadow sm:text-5xl">
+                <span className="text-gradient">{t.showcase.statsTitle}</span>
+              </h2>
+            </div>
+            <StatCard className={POS_TL} value={stats[0].v} label={stats[0].l} />
+            <StatCard className={POS_TR} value={stats[1].v} label={stats[1].l} />
+            <StatCard className={POS_BR} value={stats[2].v} label={stats[2].l} />
+            {/* mobile: three stats in a compact bottom row */}
+            <div className="absolute inset-x-4 bottom-24 grid grid-cols-3 gap-2 sm:hidden">
+              {stats.map((s, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-white/15 bg-black/55 p-3 text-center backdrop-blur-md"
+                >
+                  <p className="text-2xl font-semibold text-accent">{s.v}</p>
+                  <p className="mt-0.5 text-[11px] leading-tight text-white/80">{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </Stage>
+
+          {/* 04 — contact: car faces the camera on the left, request form on the right */}
+          <Stage active={stage === 3}>
+            <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-full items-center justify-center bg-black/30 px-5 py-24 backdrop-blur-sm sm:w-1/2 sm:bg-transparent sm:px-10 sm:backdrop-blur-none">
+              <div className="w-full max-w-md">
+                <h2 className="text-3xl font-semibold tracking-tight text-white drop-shadow sm:text-4xl">
+                  <span className="text-gradient">{t.contact.title}</span>
                 </h2>
-                <p className="mx-auto mt-3 max-w-xl text-sm text-white/80 sm:text-base">{s.sub}</p>
+                <p className="mt-2 text-sm text-white/80 sm:text-base">{t.contact.subtitle}</p>
+                <div className="mt-5 rounded-3xl border border-white/15 bg-black/55 p-5 backdrop-blur-md sm:p-6">
+                  <ContactForm />
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          </Stage>
+
+          {/* 05 — footer: same car pose as the contact stage, footer info on the right */}
+          <Stage active={stage === 4}>
+            <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-full items-center justify-center bg-black/30 px-5 py-24 backdrop-blur-sm sm:w-1/2 sm:bg-transparent sm:px-10 sm:backdrop-blur-none">
+              <div className="w-full max-w-md">
+                <Logo />
+                <p className="mt-3 max-w-xs text-sm text-white/70">{t.footer.tagline}</p>
+
+                <div className="mt-8 space-y-2 text-sm">
+                  <p className="font-medium text-white">{t.nav.contact}</p>
+                  <p className="text-white/70">{t.footer.address}</p>
+                  <a href={`tel:${t.footer.phone.replace(/\s+/g, "")}`} className="block text-white/70 hover:text-white">
+                    {t.footer.phone}
+                  </a>
+                </div>
+
+                <div className="mt-8 flex flex-col gap-1 border-t border-white/15 pt-4 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+                  <span>© {new Date().getFullYear()} LevelAuto. {t.footer.rights}</span>
+                  <span>Tashkent · Uzbekistan</span>
+                </div>
+              </div>
+            </div>
+          </Stage>
         </div>
 
-        {/* top right: product identity + price */}
-        <div className="pointer-events-none absolute right-5 top-20 text-right sm:right-10 sm:top-28">
-          <p className="text-xs uppercase tracking-widest text-white/60">
-            {SHOWCASE.brand} {SHOWCASE.model}
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-white drop-shadow sm:text-3xl">
-            ${SHOWCASE.priceUsd.toLocaleString("en-US")}
-          </p>
-          <p className="mt-1 text-sm text-white/80">{SHOWCASE.city}</p>
+        {/* persistent CTA — under the car on desktop; on mobile hidden on the
+            form/footer stages where a full-width panel already owns the screen */}
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-6 px-5 transition-all duration-700 sm:bottom-32 sm:px-10 ${
+            stage >= 3 ? "hidden justify-start sm:flex" : "flex justify-center"
+          }`}
+        >
+          <Link href="/catalog" className={CTA_PRIMARY}>{t.hero.cta}</Link>
         </div>
 
-        {/* persistent CTAs (from the old Hero) */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-28 flex justify-center gap-3 sm:bottom-32">
-          <Link
-            href="/catalog"
-            className="pointer-events-auto rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover glow-accent"
-          >
-            {t.hero.cta}
-          </Link>
-          <Link
-            href="/contact"
-            className="pointer-events-auto rounded-full border border-white/25 bg-black/20 px-6 py-3 text-sm font-medium text-white backdrop-blur transition-colors hover:bg-black/40"
-          >
-            {t.hero.secondary}
-          </Link>
-        </div>
-
-        {/* left: vertical arrows + position number */}
+        {/* left: vertical arrows + position number (always visible) */}
         <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 sm:left-10">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="opacity-70">
             <path d="M12 19V5M5 12l7-7 7 7" />
@@ -261,22 +421,31 @@ export function CarShowcase() {
         </div>
 
         {/* bottom: spec row + full details */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-8 sm:px-10">
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-8 transition-opacity duration-700 sm:px-10 ${
+            stage >= 3 ? "opacity-0" : "opacity-100"
+          }`}
+        >
           <div className="mx-auto flex max-w-5xl flex-wrap items-end justify-between gap-6 border-t border-white/20 pt-5">
             <dl className="flex flex-wrap gap-x-10 gap-y-3 text-white">
               <Spec label={t.car.year} value={String(SHOWCASE.year)} />
-              <Spec label={t.car.mileage} value={`${SHOWCASE.mileageKm.toLocaleString("en-US")} km`} />
               <Spec label={t.car.power} value={`${SHOWCASE.hp} ${t.car.hp}`} />
             </dl>
-            <a
-              href="/catalog"
-              className="pointer-events-auto text-sm font-medium text-white underline-offset-4 hover:underline"
-            >
-              {t.showcase.details} →
-            </a>
           </div>
         </div>
       </div>
+
+      {/* Scroll-snap anchors — one per stage, placed at the frame where each
+          stage reads best (intro at the top, contact once the car is front-left,
+          footer once it has turned its rear). Travel = 400vh − 100vh = 300vh. */}
+      {[0, 90, 150, 216, 276].map((top, i) => (
+        <div
+          key={i}
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 h-px"
+          style={{ top: `${top}vh`, scrollSnapAlign: "start" }}
+        />
+      ))}
 
       {/* DOM overlay loader for the heavy GLB (reads Suspense progress) */}
       <Loader
@@ -293,6 +462,50 @@ function Spec({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-[11px] uppercase tracking-widest text-white/60">{label}</dt>
       <dd className="mt-0.5 text-lg font-medium">{value}</dd>
+    </div>
+  );
+}
+
+/** One crossfading layer of surrounding text, shown when its stage is active. */
+function Stage({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={`absolute inset-0 transition-all duration-700 ${
+        active ? "opacity-100 blur-0" : "pointer-events-none opacity-0 blur-[2px]"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Readable annotation chip placed around the car (why-LevelAuto reasons). */
+function InfoCard({
+  index,
+  title,
+  body,
+  className = "",
+}: {
+  index: string;
+  title: string;
+  body: string;
+  className?: string;
+}) {
+  return (
+    <div className={`w-[min(46vw,260px)] rounded-2xl border border-white/15 bg-black/45 p-4 backdrop-blur-md ${className}`}>
+      <span className="text-[11px] font-semibold uppercase tracking-widest text-accent">{index}</span>
+      <h3 className="mt-1 text-base font-semibold text-white sm:text-lg">{title}</h3>
+      <p className="mt-1 text-xs text-white/75 sm:text-sm">{body}</p>
+    </div>
+  );
+}
+
+/** Big-number stat chip placed around the car. */
+function StatCard({ value, label, className = "" }: { value: string; label: string; className?: string }) {
+  return (
+    <div className={`w-[min(42vw,220px)] rounded-2xl border border-white/15 bg-black/45 p-4 text-center backdrop-blur-md ${className}`}>
+      <p className="text-4xl font-semibold text-accent sm:text-5xl">{value}</p>
+      <p className="mt-1 text-xs text-white/80 sm:text-sm">{label}</p>
     </div>
   );
 }

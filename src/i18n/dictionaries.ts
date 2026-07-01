@@ -7,7 +7,7 @@ export const localeNames: Record<Locale, string> = { ru: "RU", uz: "UZ", en: "EN
 export type Dict = {
   nav: { catalog: string; about: string; contact: string };
   hero: { eyebrow: string; title: string; titleAccent: string; subtitle: string; cta: string; secondary: string; stat1: string; stat1l: string; stat2: string; stat2l: string; stat3: string; stat3l: string };
-  showcase: { eyebrow: string; title: string; hint: string; details: string };
+  showcase: { eyebrow: string; title: string; hint: string; details: string; statsTitle: string };
   featured: { title: string; subtitle: string; viewAll: string };
   about: { title: string; body: string; p1t: string; p1b: string; p2t: string; p2b: string; p3t: string; p3b: string };
   catalog: {
@@ -40,7 +40,7 @@ export const dictionaries: Record<Locale, Dict> = {
       stat2: "500+", stat2l: "довольных клиентов",
       stat3: "100%", stat3l: "проверка истории",
     },
-    showcase: { eyebrow: "Zeekr 7X · 2025", title: "Рассмотрите каждую деталь", hint: "Прокрутите, чтобы повернуть", details: "Подробнее" },
+    showcase: { eyebrow: "Zeekr 7X · 2025", title: "Рассмотрите каждую деталь", hint: "Прокрутите, чтобы повернуть", details: "Подробнее", statsTitle: "LevelAuto в цифрах" },
     featured: { title: "Избранное", subtitle: "Автомобили в наличии", viewAll: "Весь каталог" },
     about: {
       title: "Почему LevelAuto",
@@ -77,7 +77,7 @@ export const dictionaries: Record<Locale, Dict> = {
       stat2: "500+", stat2l: "mamnun mijoz",
       stat3: "100%", stat3l: "tarix tekshiruvi",
     },
-    showcase: { eyebrow: "Zeekr 7X · 2025", title: "Har bir detalni ko‘ring", hint: "Aylantirish uchun pastga suring", details: "Batafsil" },
+    showcase: { eyebrow: "Zeekr 7X · 2025", title: "Har bir detalni ko‘ring", hint: "Aylantirish uchun pastga suring", details: "Batafsil", statsTitle: "LevelAuto raqamlarda" },
     featured: { title: "Tanlangan", subtitle: "Mavjud avtomobillar", viewAll: "Butun katalog" },
     about: {
       title: "Nega LevelAuto",
@@ -114,7 +114,7 @@ export const dictionaries: Record<Locale, Dict> = {
       stat2: "500+", stat2l: "happy clients",
       stat3: "100%", stat3l: "history checked",
     },
-    showcase: { eyebrow: "Zeekr 7X · 2025", title: "Explore every detail", hint: "Scroll to rotate", details: "Full details" },
+    showcase: { eyebrow: "Zeekr 7X · 2025", title: "Explore every detail", hint: "Scroll to rotate", details: "Full details", statsTitle: "LevelAuto in numbers" },
     featured: { title: "Featured", subtitle: "Available now", viewAll: "Full catalog" },
     about: {
       title: "Why LevelAuto",

@@ -32,6 +32,16 @@
 
 html {
   scroll-behavior: smooth;
+  /* Snap the homepage showcase stage-by-stage (anchors live inside CarShowcase);
+     pages without snap anchors are unaffected. */
+  scroll-snap-type: y mandatory;
+}
+
+/* Gentler snap on touch devices — mandatory can feel like it fights momentum. */
+@media (max-width: 640px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
 }
 
 body {
