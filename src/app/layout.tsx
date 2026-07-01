@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Manrope } from "next/font/google";
+import { Montserrat, Manrope } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/i18n/locale-context";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
-// Paired type: a high-contrast display serif for headlines + a modern
-// grotesque for body — neither is Inter/Roboto. Both carry Cyrillic (RU/UZ).
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+// Paired type: a bold geometric grotesque for headlines — echoing the
+// LevelAuto wordmark (tight, modern, automotive) — + Manrope for body.
+// Both carry Cyrillic (RU/UZ).
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin", "cyrillic"],
+  weight: ["600", "700", "800"],
   display: "swap",
 });
 const manrope = Manrope({
@@ -34,7 +36,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" className={`${playfair.variable} ${manrope.variable} h-full`}>
+    <html lang="ru" className={`${montserrat.variable} ${manrope.variable} h-full`}>
       <body className="flex min-h-full flex-col antialiased">
         <LocaleProvider>
           <Header />

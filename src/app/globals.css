@@ -24,7 +24,7 @@
   --color-accent-hover: var(--accent-hover);
   --color-secondary: var(--secondary);
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -53,12 +53,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Headlines use the display serif; body stays on the grotesque. */
+/* Headlines use the bold geometric display — matching the logo wordmark;
+   body stays on Manrope. Tight + heavy = the automotive-modern brand feel. */
 h1,
 h2 {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 /* Keyboard focus — visible accent ring (a11y + intentional feel). */

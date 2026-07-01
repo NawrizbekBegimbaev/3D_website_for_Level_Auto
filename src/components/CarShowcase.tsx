@@ -306,7 +306,7 @@ export function CarShowcase() {
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 {t.hero.eyebrow}
               </span>
-              <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-white drop-shadow sm:text-6xl">
+              <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-[1.02] tracking-tight text-white drop-shadow sm:text-6xl">
                 <span className="text-gradient">{t.hero.title} </span>
                 <span className="text-accent">{t.hero.titleAccent}</span>
               </h1>
@@ -323,7 +323,7 @@ export function CarShowcase() {
           {/* 02 — why LevelAuto: three reasons around the car */}
           <Stage active={stage === 1}>
             <div className={HEADING_WRAP}>
-              <h2 className="text-3xl font-semibold tracking-tight text-white drop-shadow sm:text-5xl">
+              <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow sm:text-5xl">
                 <span className="text-gradient">{t.about.title}</span>
               </h2>
               <p className="mx-auto mt-3 max-w-md text-sm text-white/80 sm:text-base">{t.about.body}</p>
@@ -350,7 +350,7 @@ export function CarShowcase() {
           {/* 03 — stats */}
           <Stage active={stage === 2}>
             <div className={HEADING_WRAP}>
-              <h2 className="text-3xl font-semibold tracking-tight text-white drop-shadow sm:text-5xl">
+              <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow sm:text-5xl">
                 <span className="text-gradient">{t.showcase.statsTitle}</span>
               </h2>
             </div>
@@ -375,7 +375,7 @@ export function CarShowcase() {
           <Stage active={stage === 3}>
             <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-full items-center justify-center bg-black/30 px-5 py-24 backdrop-blur-sm sm:w-1/2 sm:bg-transparent sm:px-10 sm:backdrop-blur-none">
               <div className="w-full max-w-md">
-                <h2 className="text-3xl font-semibold tracking-tight text-white drop-shadow sm:text-4xl">
+                <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow sm:text-4xl">
                   <span className="text-gradient">{t.contact.title}</span>
                 </h2>
                 <p className="mt-2 text-sm text-white/80 sm:text-base">{t.contact.subtitle}</p>
