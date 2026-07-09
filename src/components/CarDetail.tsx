@@ -5,19 +5,15 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import type { Car } from "@/data/cars";
 import { useLocale } from "@/i18n/locale-context";
-import { formatPrice, formatKm } from "@/lib/format";
+import { formatMoney, formatYears } from "@/lib/format";
 import { ContactForm } from "./ContactForm";
 
 export function CarDetail({ car }: { car: Car }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  // Только то, что есть в прайсе. Характеристики не выдумываем — см. data/cars.ts.
   const specs = [
-    { l: t.car.year, v: String(car.year) },
-    { l: t.car.mileage, v: formatKm(car.mileageKm) },
-    { l: t.car.power, v: `${car.power} ${t.car.hp}` },
-    { l: t.car.fuel, v: t.fuelTypes[car.fuel] },
-    { l: t.car.body, v: t.bodyTypes[car.body] },
-    { l: t.car.transmission, v: car.transmission === "automatic" ? t.car.automatic : t.car.manual },
-    { l: t.car.color, v: car.color },
+    { l: t.car.warranty, v: formatYears(car.warrantyYears, locale, t.car.years) },
+    { l: t.car.offer, v: t.offers[car.offer] },
   ];
 
   return (
@@ -58,9 +54,11 @@ export function CarDetail({ car }: { car: Car }) {
         <div>
           <p className="text-sm uppercase tracking-wide text-accent">{car.brand}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{car.model}</h1>
-          <p className="mt-4 font-display text-4xl font-semibold text-white">{formatPrice(car.priceUsd)}</p>
+          <p className="mt-4 font-display text-4xl font-semibold text-white">
+            {formatMoney(car.price, car.currency, t.car.uzs)}
+          </p>
 
-          <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
+          <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border">
             {specs.map((s) => (
               <div key={s.l} className="bg-surface p-4">
                 <dt className="text-xs uppercase tracking-wide text-muted">{s.l}</dt>
@@ -72,7 +70,7 @@ export function CarDetail({ car }: { car: Car }) {
           <div className="mt-8 rounded-2xl border border-border bg-surface/50 p-6">
             <h2 className="text-lg font-medium text-white">{t.contact.title}</h2>
             <p className="mb-4 mt-1 text-sm text-muted">{t.contact.subtitle}</p>
-            <ContactForm subject={`${car.brand} ${car.model} ${car.year}`} />
+            <ContactForm subject={`${car.brand} ${car.model}`} />
           </div>
         </div>
       </div>

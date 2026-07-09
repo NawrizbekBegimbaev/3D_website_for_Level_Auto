@@ -2,37 +2,28 @@
 
 import { useMemo, useState } from "react";
 import { CarCard } from "./CarCard";
-import { cars, brands, bodies, fuels, type Body, type Fuel } from "@/data/cars";
+import { cars, brands, offers, priceInUsd, PRICE_LIST_DATE, type Offer } from "@/data/cars";
 import { useLocale } from "@/i18n/locale-context";
 
-type Sort = "newest" | "priceAsc" | "priceDesc";
+type Sort = "priceAsc" | "priceDesc";
 
 export function CatalogClient() {
   const { t } = useLocale();
   const [brand, setBrand] = useState<string>("");
-  const [body, setBody] = useState<Body | "">("");
-  const [fuel, setFuel] = useState<Fuel | "">("");
-  const [sort, setSort] = useState<Sort>("newest");
+  const [offer, setOffer] = useState<Offer | "">("");
+  const [sort, setSort] = useState<Sort>("priceAsc");
 
   const filtered = useMemo(() => {
-    const list = cars.filter(
-      (c) =>
-        (!brand || c.brand === brand) &&
-        (!body || c.body === body) &&
-        (!fuel || c.fuel === fuel)
-    );
-    const sorted = [...list];
-    if (sort === "priceAsc") sorted.sort((a, b) => a.priceUsd - b.priceUsd);
-    else if (sort === "priceDesc") sorted.sort((a, b) => b.priceUsd - a.priceUsd);
-    else sorted.sort((a, b) => b.year - a.year);
-    return sorted;
-  }, [brand, body, fuel, sort]);
+    const list = cars.filter((c) => (!brand || c.brand === brand) && (!offer || c.offer === offer));
+    // Прайс смешанный (доллары + сумы), поэтому сравниваем по единой шкале.
+    const sorted = [...list].sort((a, b) => priceInUsd(a) - priceInUsd(b));
+    return sort === "priceDesc" ? sorted.reverse() : sorted;
+  }, [brand, offer, sort]);
 
-  const hasFilters = brand || body || fuel;
+  const hasFilters = brand || offer;
   const reset = () => {
     setBrand("");
-    setBody("");
-    setFuel("");
+    setOffer("");
   };
 
   const selectClass =
@@ -53,20 +44,11 @@ export function CatalogClient() {
               </select>
             </Field>
 
-            <Field label={t.catalog.filters.body}>
-              <select className={selectClass} value={body} onChange={(e) => setBody(e.target.value as Body)}>
+            <Field label={t.catalog.filters.offer}>
+              <select className={selectClass} value={offer} onChange={(e) => setOffer(e.target.value as Offer)}>
                 <option value="">{t.catalog.filters.all}</option>
-                {bodies.map((b) => (
-                  <option key={b} value={b}>{t.bodyTypes[b]}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label={t.catalog.filters.fuel}>
-              <select className={selectClass} value={fuel} onChange={(e) => setFuel(e.target.value as Fuel)}>
-                <option value="">{t.catalog.filters.all}</option>
-                {fuels.map((f) => (
-                  <option key={f} value={f}>{t.fuelTypes[f]}</option>
+                {offers.map((o) => (
+                  <option key={o} value={o}>{t.offers[o]}</option>
                 ))}
               </select>
             </Field>
@@ -83,12 +65,16 @@ export function CatalogClient() {
       {/* Results */}
       <div>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted">
-            {filtered.length} {t.catalog.count}
-          </p>
+          <div>
+            <p className="text-sm text-muted">
+              {filtered.length} {t.catalog.count}
+            </p>
+            <p className="mt-0.5 text-xs text-muted/70">
+              {t.catalog.priceDate.replace("{date}", PRICE_LIST_DATE)}
+            </p>
+          </div>
           <Field label="" inline>
             <select className={`${selectClass} w-auto`} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-              <option value="newest">{t.catalog.sort.newest}</option>
               <option value="priceAsc">{t.catalog.sort.priceAsc}</option>
               <option value="priceDesc">{t.catalog.sort.priceDesc}</option>
             </select>
