@@ -23,7 +23,8 @@ export function Header() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
         <Link href="/" aria-label="LevelAuto">
-          <Logo />
+          {/* The "AUTO" line is illegible at header scale — show the mark alone. */}
+          <Logo variant="mark" className="h-8 w-auto" />
         </Link>
 
         <div className="flex items-center gap-3">

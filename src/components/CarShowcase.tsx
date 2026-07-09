@@ -19,6 +19,9 @@ import {
   AdaptiveDpr,
 } from "@react-three/drei";
 import * as THREE from "three";
+import { PHONES, SOCIALS, telHref } from "@/data/contacts";
+import { getCar } from "@/data/cars";
+import { formatMoney, formatYears } from "@/lib/format";
 import { useLocale } from "@/i18n/locale-context";
 import { ContactForm } from "./ContactForm";
 import { Logo } from "./Logo";
@@ -60,17 +63,10 @@ const FOCUS_ZOOM = 1.5; // how much closer / bigger the car gets when focused
  *  stages so the car keeps the same lit backdrop through to the end. */
 const COLOR_STOPS = ["#08080a", "#13131a", "#3a1518", "#7f1d1d", "#7f1d1d"];
 
-/** Static car metadata for the showcase HUD (the hero model). */
-const SHOWCASE = {
-  brand: "Zeekr",
-  model: "7X",
-  subtitle: "All-electric flagship SUV",
-  priceUsd: 62000,
-  city: "Tashkent",
-  year: 2025,
-  mileageKm: 0,
-  hp: 639,
-};
+/** Витрина показывает ту же машину, что и каталог — данные берём из прайса,
+ *  а не дублируем руками (раньше здесь висели выдуманные 639 л.с. и $62 000). */
+const SHOWCASE_CAR = getCar("zeekr-7x-full")!;
+const SHOWCASE_CITY = "Tashkent";
 
 /* Shared positions for the text that surrounds the car per scroll stage. */
 const HEADING_WRAP = "absolute inset-x-0 top-24 px-5 text-center sm:top-28";
@@ -78,6 +74,9 @@ const HEADING_WRAP = "absolute inset-x-0 top-24 px-5 text-center sm:top-28";
 // collapsed into a single bottom panel (see the `sm:hidden` blocks per stage).
 const POS_TL = "absolute left-5 top-44 hidden sm:left-10 sm:top-52 sm:block";
 const POS_TR = "absolute right-5 top-44 hidden sm:right-10 sm:top-52 sm:block";
+// Left rail keeps its middle free: the scroll arrows + position index live there.
+const POS_BL = "absolute left-5 bottom-28 hidden sm:left-10 sm:bottom-32 sm:block";
+const POS_MR = "absolute right-5 top-1/2 hidden -translate-y-1/2 sm:right-10 sm:block";
 const POS_BR = "absolute right-5 bottom-28 hidden sm:right-10 sm:bottom-32 sm:block";
 const CTA_PRIMARY =
   "pointer-events-auto rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-all duration-200 hover:scale-[1.03] hover:bg-accent-hover active:scale-95 glow-accent";
@@ -138,13 +137,20 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
 
   // Shrink the car on narrow / portrait screens so the whole body stays in
   // frame. On wide desktop viewports the factor clamps to 1 (no change).
-  const { size } = useThree();
+  const { size, invalidate } = useThree();
   const isMobile = size.width < 640;
   const fitFactor = Math.min(1, (size.width / size.height) * 0.85);
   // On desktop the contact/footer stages slide the car into the left half
   // (form on the right). On mobile the panel is full-width, so keep the car
   // centred — otherwise it slides off the left edge.
   const focusLeftX = isMobile ? 0 : FOCUS_LEFT_X;
+
+  // The canvas runs in `frameloop="demand"`, so a frame only happens when
+  // something asks for one. Kick one off once the GLB is in and on resize —
+  // otherwise the first (and post-resize) frame would never be drawn.
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, model, size.width, size.height]);
 
   useFrame((_, delta) => {
     if (!group.current) return;
@@ -170,6 +176,16 @@ function CarModel({ progress }: { progress: RefObject<number> }) {
     g.rotation.x = THREE.MathUtils.damp(g.rotation.x, targetX, 4, delta);
     g.position.x = THREE.MathUtils.damp(g.position.x, targetPosX, 4, delta);
     g.scale.setScalar(THREE.MathUtils.damp(g.scale.x, targetScale, 4, delta));
+
+    // Damping is asymptotic: keep asking for frames until the pose has visually
+    // caught up with the target, then let the loop go quiet. Scrolling wakes it
+    // again from the progress ticker.
+    const settled =
+      Math.abs(g.rotation.y - targetY) < 1e-3 &&
+      Math.abs(g.rotation.x - targetX) < 1e-3 &&
+      Math.abs(g.position.x - targetPosX) < 1e-3 &&
+      Math.abs(g.scale.x - targetScale) < 1e-3;
+    if (!settled) invalidate();
   });
 
   return (
@@ -203,23 +219,24 @@ function colorAt(p: number): string {
   return hexLerp(COLOR_STOPS[i], COLOR_STOPS[i + 1], x - i);
 }
 
-function gradientAt(p: number): string {
-  const c = colorAt(p);
-  return `radial-gradient(130% 130% at 50% 30%, ${hexLerp(c, "#ffffff", 0.16)} 0%, ${c} 50%, ${hexLerp(
-    c,
-    "#000000",
-    0.5
-  )} 100%)`;
-}
+/** The vignette that used to be baked into a per-frame radial-gradient string.
+ *  Alpha compositing over a solid fill *is* a lerp, so painting this once on a
+ *  static layer above a plain background-colour is pixel-identical to
+ *  recomputing `radial-gradient(… lerp(c,white,.16) … c … lerp(c,black,.5))`
+ *  every frame — minus the full-screen gradient rasterisation. */
+const VIGNETTE =
+  "radial-gradient(130% 130% at 50% 30%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.5) 100%)";
 
 /* ------------------------------ section ------------------------------ */
 
 export function CarShowcase() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const sectionRef = useRef<HTMLElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const idxRef = useRef<HTMLSpanElement>(null);
   const progress = useRef(0);
+  /** R3F's `invalidate` — requests exactly one frame from the demand loop. */
+  const invalidateRef = useRef<(() => void) | null>(null);
   // Active stage (0..3) — which of the 4 scroll positions the car is on. The
   // overlay text (sourced from the old <Hero/>) crossfades as this changes.
   const [stage, setStage] = useState(0);
@@ -231,6 +248,8 @@ export function CarShowcase() {
     { t: t.about.p1t, b: t.about.p1b },
     { t: t.about.p2t, b: t.about.p2b },
     { t: t.about.p3t, b: t.about.p3b },
+    { t: t.about.p4t, b: t.about.p4b },
+    { t: t.about.p5t, b: t.about.p5b },
   ];
   const stats = [
     { v: t.hero.stat1, l: t.hero.stat1l },
@@ -241,23 +260,38 @@ export function CarShowcase() {
   // Native page-scroll progress (0→1) for this section. Drives BOTH the DOM
   // (background colour + position index) and, via the shared ref, the 3D
   // rotation inside <useFrame>. Reversible and frame-synced through rAF.
+  //
+  // Everything below is guarded on "did it actually change": when the user is
+  // not scrolling this loop touches no styles and requests no WebGL frame, so
+  // an idle showcase costs nothing beyond the rAF callback itself.
   useEffect(() => {
     let raf = 0;
+    let lastP = -1;
+    let lastColor = "";
     const tick = () => {
       const el = sectionRef.current;
-      if (el) {
+      if (el && !document.hidden) {
         const rect = el.getBoundingClientRect();
         const total = rect.height - window.innerHeight;
         const p = total > 0 ? Math.min(Math.max(-rect.top / total, 0), 1) : 0;
-        progress.current = p;
-        if (bgRef.current) bgRef.current.style.background = gradientAt(p);
-        const stageIdx = Math.min(COLOR_STOPS.length - 1, Math.floor(p * COLOR_STOPS.length));
-        if (idxRef.current) {
-          idxRef.current.textContent = String(stageIdx + 1).padStart(2, "0");
-        }
-        if (stageIdx !== stageRef.current) {
-          stageRef.current = stageIdx;
-          setStage(stageIdx);
+        if (Math.abs(p - lastP) > 1e-4) {
+          lastP = p;
+          progress.current = p;
+          invalidateRef.current?.();
+
+          const color = colorAt(p);
+          if (bgRef.current && color !== lastColor) {
+            lastColor = color;
+            bgRef.current.style.backgroundColor = color;
+          }
+          const stageIdx = Math.min(COLOR_STOPS.length - 1, Math.floor(p * COLOR_STOPS.length));
+          if (idxRef.current) {
+            idxRef.current.textContent = String(stageIdx + 1).padStart(2, "0");
+          }
+          if (stageIdx !== stageRef.current) {
+            stageRef.current = stageIdx;
+            setStage(stageIdx);
+          }
         }
       }
       raf = requestAnimationFrame(tick);
@@ -270,16 +304,24 @@ export function CarShowcase() {
     <section ref={sectionRef} className="relative h-[400vh] w-full">
       {/* Pinned full-screen viewport */}
       <div className="sticky top-0 h-screen w-full overflow-hidden">
-        {/* scroll-driven colour layer (behind the transparent canvas) */}
-        <div ref={bgRef} className="absolute inset-0" style={{ background: gradientAt(0) }} />
+        {/* scroll-driven colour layer (behind the transparent canvas) — a plain
+            background-colour repaint; the vignette above it never changes. */}
+        <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: colorAt(0) }} />
+        <div className="pointer-events-none absolute inset-0" style={{ background: VIGNETTE }} />
         <div className="pointer-events-none absolute inset-0 bg-black/10" />
 
-        {/* 3D scene — alpha canvas, fills the whole viewport */}
+        {/* 3D scene — alpha canvas, fills the whole viewport. `demand` frameloop:
+            frames are drawn only while the car is moving (see CarModel) or the
+            scroll ticker asks for one — an idle showcase renders nothing. */}
         <Canvas
           className="!absolute inset-0"
-          dpr={[1, 2]}
+          frameloop="demand"
+          dpr={[1, 1.5]}
           gl={{ alpha: true, antialias: true }}
           camera={{ position: [0, 0.4, 6], fov: 42 }}
+          onCreated={({ invalidate }) => {
+            invalidateRef.current = invalidate;
+          }}
         >
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 6]} intensity={2.4} />
@@ -289,7 +331,14 @@ export function CarShowcase() {
                 served from our own CDN, no external dependency. */}
             <Environment files="/hdri/studio.hdr" />
             <CarModel progress={progress} />
-            <ContactShadows position={[0, -1.9, 0]} opacity={0.5} scale={16} blur={2.8} far={4.5} />
+            <ContactShadows
+              position={[0, -1.9, 0]}
+              opacity={0.5}
+              scale={16}
+              blur={2.8}
+              far={4.5}
+              resolution={256}
+            />
           </Suspense>
           <AdaptiveDpr pixelated />
         </Canvas>
@@ -314,9 +363,12 @@ export function CarShowcase() {
             </div>
             <div className="absolute right-5 top-44 hidden text-right sm:right-10 sm:top-52 sm:block">
               <p className="text-2xl font-semibold text-white drop-shadow sm:text-3xl">
-                {SHOWCASE.brand} {SHOWCASE.model}
+                {SHOWCASE_CAR.brand} {SHOWCASE_CAR.model}
               </p>
-              <p className="mt-1 text-base text-white/80 sm:text-lg">{SHOWCASE.city}</p>
+              <p className="mt-1 text-base text-white/80 sm:text-lg">{SHOWCASE_CITY}</p>
+              <p className="mt-1 text-lg font-medium text-white sm:text-xl">
+                {formatMoney(SHOWCASE_CAR.price, SHOWCASE_CAR.currency, t.car.uzs)}
+              </p>
             </div>
           </Stage>
 
@@ -328,18 +380,22 @@ export function CarShowcase() {
               </h2>
               <p className="mx-auto mt-3 max-w-md text-sm text-white/80 sm:text-base">{t.about.body}</p>
             </div>
+            {/* Five cards ring the car: two down the left rail, three down the
+                right. The left rail's middle stays clear for the scroll index. */}
             <InfoCard className={POS_TL} index="01" title={reasons[0].t} body={reasons[0].b} />
             <InfoCard className={POS_TR} index="02" title={reasons[1].t} body={reasons[1].b} />
-            <InfoCard className={POS_BR} index="03" title={reasons[2].t} body={reasons[2].b} />
+            <InfoCard className={POS_BL} index="03" title={reasons[2].t} body={reasons[2].b} />
+            <InfoCard className={POS_MR} index="04" title={reasons[3].t} body={reasons[3].b} />
+            <InfoCard className={POS_BR} index="05" title={reasons[4].t} body={reasons[4].b} />
             {/* mobile: one compact panel instead of floating cards */}
-            <div className="absolute inset-x-4 bottom-24 rounded-2xl border border-white/15 bg-black/55 p-4 backdrop-blur-md sm:hidden">
-              <ul className="space-y-3">
+            <div className="absolute inset-x-4 bottom-24 rounded-2xl border border-white/15 bg-black/55 p-3.5 backdrop-blur-md sm:hidden">
+              <ul className="space-y-2">
                 {reasons.map((r, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="text-xs font-semibold text-accent">0{i + 1}</span>
                     <div>
                       <p className="text-sm font-semibold leading-tight text-white">{r.t}</p>
-                      <p className="mt-0.5 text-xs text-white/70">{r.b}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-white/70">{r.b}</p>
                     </div>
                   </li>
                 ))}
@@ -390,15 +446,32 @@ export function CarShowcase() {
           <Stage active={stage === 4}>
             <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-full items-center justify-center bg-black/30 px-5 py-24 backdrop-blur-sm sm:w-1/2 sm:bg-transparent sm:px-10 sm:backdrop-blur-none">
               <div className="w-full max-w-md">
-                <Logo />
+                <Logo className="h-12 w-auto" />
                 <p className="mt-3 max-w-xs text-sm text-white/70">{t.footer.tagline}</p>
 
                 <div className="mt-8 space-y-2 text-sm">
                   <p className="font-medium text-white">{t.nav.contact}</p>
                   <p className="text-white/70">{t.footer.address}</p>
-                  <a href={`tel:${t.footer.phone.replace(/\s+/g, "")}`} className="block text-white/70 hover:text-white">
-                    {t.footer.phone}
-                  </a>
+                  {PHONES.map((phone) => (
+                    <a key={phone} href={telHref(phone)} className="block text-white/70 hover:text-white">
+                      {phone}
+                    </a>
+                  ))}
+                </div>
+
+                <div className="mt-6 space-y-2 text-sm">
+                  <p className="font-medium text-white">{t.footer.social}</p>
+                  {SOCIALS.map((s) => (
+                    <a
+                      key={s.name}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-white/70 hover:text-white"
+                    >
+                      {s.name} · {s.handle}
+                    </a>
+                  ))}
                 </div>
 
                 <div className="mt-8 flex flex-col gap-1 border-t border-white/15 pt-4 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
@@ -447,8 +520,11 @@ export function CarShowcase() {
         >
           <div className="mx-auto flex max-w-5xl flex-wrap items-end justify-between gap-6 border-t border-white/20 pt-5">
             <dl className="flex flex-wrap gap-x-10 gap-y-3 text-white">
-              <Spec label={t.car.year} value={String(SHOWCASE.year)} />
-              <Spec label={t.car.power} value={`${SHOWCASE.hp} ${t.car.hp}`} />
+              <Spec
+                label={t.car.warranty}
+                value={formatYears(SHOWCASE_CAR.warrantyYears, locale, t.car.years)}
+              />
+              <Spec label={t.car.offer} value={t.offers[SHOWCASE_CAR.offer]} />
             </dl>
           </div>
         </div>
@@ -485,13 +561,23 @@ function Spec({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** One crossfading layer of surrounding text, shown when its stage is active. */
+/** One crossfading layer of surrounding text, shown when its stage is active.
+ *
+ *  Inactive layers flip to `visibility: hidden` once the fade finishes, which
+ *  drops them (and the `backdrop-blur` cards they contain) out of paint and
+ *  compositing entirely. Without it, four full-screen blurred layers would be
+ *  recomposited on every frame the background colour changes. */
 function Stage({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <div
-      className={`absolute inset-0 transition-all duration-700 ${
-        active ? "opacity-100 blur-0" : "pointer-events-none opacity-0 blur-[2px]"
+      className={`absolute inset-0 transition-opacity duration-700 ${
+        active ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
+      style={{
+        visibility: active ? "visible" : "hidden",
+        transitionProperty: "opacity, visibility",
+        transitionDelay: active ? "0ms" : "0ms, 700ms",
+      }}
     >
       {children}
     </div>

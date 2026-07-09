@@ -9,21 +9,35 @@ export type Dict = {
   hero: { eyebrow: string; title: string; titleAccent: string; subtitle: string; cta: string; secondary: string; stat1: string; stat1l: string; stat2: string; stat2l: string; stat3: string; stat3l: string };
   showcase: { eyebrow: string; title: string; hint: string; details: string; statsTitle: string };
   featured: { title: string; subtitle: string; viewAll: string };
-  about: { title: string; body: string; p1t: string; p1b: string; p2t: string; p2b: string; p3t: string; p3b: string };
+  about: { title: string; body: string; p1t: string; p1b: string; p2t: string; p2b: string; p3t: string; p3b: string; p4t: string; p4b: string; p5t: string; p5b: string };
   catalog: {
     title: string;
     subtitle: string;
     count: string;
-    filters: { brand: string; body: string; fuel: string; all: string; reset: string };
-    sort: { label: string; priceAsc: string; priceDesc: string; newest: string };
+    /** «Цены на 30.06.2026» — дата подставляется в {date} */
+    priceDate: string;
+    filters: { brand: string; offer: string; all: string; reset: string };
+    sort: { label: string; priceAsc: string; priceDesc: string };
     empty: string;
     from: string;
   };
-  bodyTypes: Record<"sedan" | "suv" | "coupe" | "crossover", string>;
-  fuelTypes: Record<"petrol" | "diesel" | "hybrid" | "electric", string>;
-  car: { mileage: string; power: string; fuel: string; year: string; transmission: string; body: string; color: string; automatic: string; manual: string; hp: string; request: string; back: string };
-  contact: { title: string; subtitle: string; name: string; phone: string; message: string; send: string; success: string; sending: string };
-  footer: { tagline: string; rights: string; address: string; phone: string };
+  /** Опции из прайса: ламинация салона / тонировка / и то и другое. */
+  offers: Record<"laminate" | "tint" | "tintLaminate", string>;
+  car: {
+    power: string;
+    year: string;
+    hp: string;
+    request: string;
+    back: string;
+    warranty: string;
+    offer: string;
+    /** Валюта прайса для сумовых цен. */
+    uzs: string;
+    /** Формы слова «год» для Intl.PluralRules (ru: год/года/лет). */
+    years: { one: string; few: string; many: string };
+  };
+  contact: { title: string; subtitle: string; name: string; phone: string; message: string; send: string; success: string; sending: string; error: string };
+  footer: { tagline: string; rights: string; address: string; social: string };
 };
 
 export const dictionaries: Record<Locale, Dict> = {
@@ -36,7 +50,7 @@ export const dictionaries: Record<Locale, Dict> = {
       subtitle: "Премиум — это не ценник, а стандарт. Находим, проверяем и привозим машину, которая ему соответствует.",
       cta: "Смотреть каталог",
       secondary: "Связаться с нами",
-      stat1: "12+", stat1l: "лет на рынке",
+      stat1: "4+", stat1l: "лет на рынке",
       stat2: "500+", stat2l: "довольных клиентов",
       stat3: "100%", stat3l: "проверка истории",
     },
@@ -48,21 +62,28 @@ export const dictionaries: Record<Locale, Dict> = {
       p1t: "Проверка истории", p1b: "Полная диагностика и юридическая чистота каждого автомобиля.",
       p2t: "Подбор под ключ", p2b: "Найдём и доставим нужную комплектацию из-за рубежа.",
       p3t: "Сопровождение", p3b: "Оформление, страховка и сервис после покупки.",
+      p4t: "Автокредит от 16%", p4b: "Рассрочка и кредит от банков-партнёров — оформим за один визит.",
+      p5t: "Trade-in", p5b: "Примем ваш автомобиль в зачёт: оценка и обмен в день обращения.",
     },
     catalog: {
       title: "Каталог автомобилей",
       subtitle: "Актуальное наличие премиум-сегмента",
       count: "автомобилей",
-      filters: { brand: "Марка", body: "Кузов", fuel: "Топливо", all: "Все", reset: "Сбросить фильтры" },
-      sort: { label: "Сортировка", priceAsc: "Сначала дешевле", priceDesc: "Сначала дороже", newest: "Сначала новее" },
+      priceDate: "Цены на {date}",
+      filters: { brand: "Марка", offer: "Опция", all: "Все", reset: "Сбросить фильтры" },
+      sort: { label: "Сортировка", priceAsc: "Сначала дешевле", priceDesc: "Сначала дороже" },
       empty: "По вашему запросу ничего не найдено",
       from: "от",
     },
-    bodyTypes: { sedan: "Седан", suv: "Внедорожник", coupe: "Купе", crossover: "Кроссовер" },
-    fuelTypes: { petrol: "Бензин", diesel: "Дизель", hybrid: "Гибрид", electric: "Электро" },
-    car: { mileage: "Пробег", power: "Мощность", fuel: "Топливо", year: "Год", transmission: "КПП", body: "Кузов", color: "Цвет", automatic: "Автомат", manual: "Механика", hp: "л.с.", request: "Оставить заявку", back: "Назад к каталогу" },
-    contact: { title: "Оставьте заявку", subtitle: "Перезвоним в течение 15 минут в рабочее время.", name: "Имя", phone: "Телефон", message: "Сообщение (необязательно)", send: "Отправить заявку", success: "Спасибо! Мы свяжемся с вами в ближайшее время.", sending: "Отправляем…" },
-    footer: { tagline: "Ваш уровень. Ваш автомобиль.", rights: "Все права защищены.", address: "Ташкент, Узбекистан", phone: "+998 71 200 00 00" },
+    offers: { laminate: "Ламинат салона", tint: "Тонировка", tintLaminate: "Тонировка + ламинат" },
+    car: {
+      power: "Мощность", year: "Год", hp: "л.с.",
+      request: "Оставить заявку", back: "Назад к каталогу",
+      warranty: "Гарантия", offer: "В подарок", uzs: "сум",
+      years: { one: "год", few: "года", many: "лет" },
+    },
+    contact: { title: "Оставьте заявку", subtitle: "Перезвоним в течение 15 минут в рабочее время.", name: "Имя", phone: "Телефон", message: "Сообщение (необязательно)", send: "Отправить заявку", success: "Спасибо! Мы свяжемся с вами в ближайшее время.", sending: "Отправляем…", error: "Не удалось отправить заявку. Позвоните нам: +998 90 124 54 55" },
+    footer: { tagline: "Ваш уровень. Ваш автомобиль.", rights: "Все права защищены.", address: "Ташкент, Узбекистан", social: "Мы в сети" },
   },
   uz: {
     nav: { catalog: "Katalog", about: "Biz haqimizda", contact: "Aloqa" },
@@ -73,7 +94,7 @@ export const dictionaries: Record<Locale, Dict> = {
       subtitle: "Premium — bu narx emas, bu daraja. Shu darajaga mos mashinani topamiz, tekshiramiz va yetkazamiz.",
       cta: "Katalogni ko‘rish",
       secondary: "Biz bilan bog‘laning",
-      stat1: "12+", stat1l: "yillik tajriba",
+      stat1: "4+", stat1l: "yillik tajriba",
       stat2: "500+", stat2l: "mamnun mijoz",
       stat3: "100%", stat3l: "tarix tekshiruvi",
     },
@@ -85,21 +106,28 @@ export const dictionaries: Record<Locale, Dict> = {
       p1t: "Tarix tekshiruvi", p1b: "Har bir avtomobilning to‘liq diagnostikasi va yuridik tozaligi.",
       p2t: "Kalit topshiriqli tanlov", p2b: "Kerakli komplektatsiyani chet eldan topib yetkazamiz.",
       p3t: "Hamrohlik", p3b: "Rasmiylashtirish, sug‘urta va sotuvdan keyingi xizmat.",
+      p4t: "Avtokredit 16% dan", p4b: "Hamkor banklar krediti va bo‘lib to‘lash — bir tashrifda rasmiylashtiramiz.",
+      p5t: "Trade-in", p5b: "Avtomobilingizni hisobga olamiz: baholash va almashuv shu kuni.",
     },
     catalog: {
       title: "Avtomobillar katalogi",
       subtitle: "Premium segment dolzarb mavjudligi",
       count: "avtomobil",
-      filters: { brand: "Marka", body: "Kuzov", fuel: "Yoqilg‘i", all: "Barchasi", reset: "Filtrlarni tozalash" },
-      sort: { label: "Saralash", priceAsc: "Avval arzon", priceDesc: "Avval qimmat", newest: "Avval yangi" },
+      priceDate: "{date} holatiga narxlar",
+      filters: { brand: "Marka", offer: "Sovg‘a", all: "Barchasi", reset: "Filtrlarni tozalash" },
+      sort: { label: "Saralash", priceAsc: "Avval arzon", priceDesc: "Avval qimmat" },
       empty: "So‘rovingiz bo‘yicha hech narsa topilmadi",
       from: "dan",
     },
-    bodyTypes: { sedan: "Sedan", suv: "Yo‘ltanlamas", coupe: "Kupe", crossover: "Krossover" },
-    fuelTypes: { petrol: "Benzin", diesel: "Dizel", hybrid: "Gibrid", electric: "Elektr" },
-    car: { mileage: "Yurgan masofa", power: "Quvvat", fuel: "Yoqilg‘i", year: "Yil", transmission: "Uzatma", body: "Kuzov", color: "Rang", automatic: "Avtomat", manual: "Mexanika", hp: "o.k.", request: "Ariza qoldirish", back: "Katalogga qaytish" },
-    contact: { title: "Ariza qoldiring", subtitle: "Ish vaqtida 15 daqiqada qo‘ng‘iroq qilamiz.", name: "Ism", phone: "Telefon", message: "Xabar (ixtiyoriy)", send: "Ariza yuborish", success: "Rahmat! Tez orada bog‘lanamiz.", sending: "Yuborilmoqda…" },
-    footer: { tagline: "Sizning darajangiz. Sizning avtomobilingiz.", rights: "Barcha huquqlar himoyalangan.", address: "Toshkent, O‘zbekiston", phone: "+998 71 200 00 00" },
+    offers: { laminate: "Salon laminati", tint: "Tonirovka", tintLaminate: "Tonirovka + laminat" },
+    car: {
+      power: "Quvvat", year: "Yil", hp: "o.k.",
+      request: "Ariza qoldirish", back: "Katalogga qaytish",
+      warranty: "Kafolat", offer: "Sovg‘aga", uzs: "so‘m",
+      years: { one: "yil", few: "yil", many: "yil" },
+    },
+    contact: { title: "Ariza qoldiring", subtitle: "Ish vaqtida 15 daqiqada qo‘ng‘iroq qilamiz.", name: "Ism", phone: "Telefon", message: "Xabar (ixtiyoriy)", send: "Ariza yuborish", success: "Rahmat! Tez orada bog‘lanamiz.", sending: "Yuborilmoqda…", error: "Arizani yuborib bo‘lmadi. Qo‘ng‘iroq qiling: +998 90 124 54 55" },
+    footer: { tagline: "Sizning darajangiz. Sizning avtomobilingiz.", rights: "Barcha huquqlar himoyalangan.", address: "Toshkent, O‘zbekiston", social: "Ijtimoiy tarmoqlarda" },
   },
   en: {
     nav: { catalog: "Catalog", about: "About", contact: "Contact" },
@@ -110,7 +138,7 @@ export const dictionaries: Record<Locale, Dict> = {
       subtitle: "Premium isn't a price tag — it's a standard. We find, inspect and deliver the car that lives up to it.",
       cta: "Browse catalog",
       secondary: "Get in touch",
-      stat1: "12+", stat1l: "years on the market",
+      stat1: "4+", stat1l: "years on the market",
       stat2: "500+", stat2l: "happy clients",
       stat3: "100%", stat3l: "history checked",
     },
@@ -122,20 +150,27 @@ export const dictionaries: Record<Locale, Dict> = {
       p1t: "History check", p1b: "Full diagnostics and clean legal status for every car.",
       p2t: "Turnkey sourcing", p2b: "We find and deliver the exact spec from abroad.",
       p3t: "Full support", p3b: "Paperwork, insurance and after-sales service.",
+      p4t: "Car loans from 16%", p4b: "Financing from partner banks — arranged in a single visit.",
+      p5t: "Trade-in", p5b: "We take your current car in part-exchange, valued and swapped the same day.",
     },
     catalog: {
       title: "Car catalog",
       subtitle: "Current premium-segment availability",
       count: "cars",
-      filters: { brand: "Brand", body: "Body", fuel: "Fuel", all: "All", reset: "Reset filters" },
-      sort: { label: "Sort", priceAsc: "Price: low to high", priceDesc: "Price: high to low", newest: "Newest first" },
+      priceDate: "Prices as of {date}",
+      filters: { brand: "Brand", offer: "Included", all: "All", reset: "Reset filters" },
+      sort: { label: "Sort", priceAsc: "Price: low to high", priceDesc: "Price: high to low" },
       empty: "Nothing found for your query",
       from: "from",
     },
-    bodyTypes: { sedan: "Sedan", suv: "SUV", coupe: "Coupe", crossover: "Crossover" },
-    fuelTypes: { petrol: "Petrol", diesel: "Diesel", hybrid: "Hybrid", electric: "Electric" },
-    car: { mileage: "Mileage", power: "Power", fuel: "Fuel", year: "Year", transmission: "Transmission", body: "Body", color: "Color", automatic: "Automatic", manual: "Manual", hp: "hp", request: "Request a quote", back: "Back to catalog" },
-    contact: { title: "Request a quote", subtitle: "We call back within 15 minutes during business hours.", name: "Name", phone: "Phone", message: "Message (optional)", send: "Send request", success: "Thank you! We will contact you shortly.", sending: "Sending…" },
-    footer: { tagline: "Your level. Your car.", rights: "All rights reserved.", address: "Tashkent, Uzbekistan", phone: "+998 71 200 00 00" },
+    offers: { laminate: "Interior lamination", tint: "Window tinting", tintLaminate: "Tinting + lamination" },
+    car: {
+      power: "Power", year: "Year", hp: "hp",
+      request: "Request a quote", back: "Back to catalog",
+      warranty: "Warranty", offer: "Included", uzs: "UZS",
+      years: { one: "year", few: "years", many: "years" },
+    },
+    contact: { title: "Request a quote", subtitle: "We call back within 15 minutes during business hours.", name: "Name", phone: "Phone", message: "Message (optional)", send: "Send request", success: "Thank you! We will contact you shortly.", sending: "Sending…", error: "Could not send your request. Please call us: +998 90 124 54 55" },
+    footer: { tagline: "Your level. Your car.", rights: "All rights reserved.", address: "Tashkent, Uzbekistan", social: "Follow us" },
   },
 };

@@ -16,8 +16,8 @@ export async function generateMetadata({
   const car = getCar(id);
   if (!car) return { title: "LevelAuto" };
   return {
-    title: `${car.brand} ${car.model} ${car.year} — LevelAuto`,
-    description: `${car.brand} ${car.model}, ${car.year}. LevelAuto, Ташкент.`,
+    title: `${car.brand} ${car.model} — LevelAuto`,
+    description: `${car.brand} ${car.model}. LevelAuto, Ташкент.`,
   };
 }
 

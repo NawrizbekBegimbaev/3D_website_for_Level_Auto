@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
+import { PHONES, SOCIALS, telHref } from "@/data/contacts";
 import { useLocale } from "@/i18n/locale-context";
 
 export function Footer() {
@@ -16,7 +17,7 @@ export function Footer() {
     <footer className="border-t border-border bg-surface/40">
       <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:grid-cols-3">
         <div className="space-y-3">
-          <Logo />
+          <Logo className="h-14 w-auto" />
           <p className="max-w-xs text-sm text-muted">{t.footer.tagline}</p>
         </div>
 
@@ -30,7 +31,24 @@ export function Footer() {
         <div className="space-y-2 text-sm">
           <p className="font-medium text-white">{t.nav.contact}</p>
           <p className="text-muted">{t.footer.address}</p>
-          <a href="tel:+998712000000" className="block text-muted hover:text-white">{t.footer.phone}</a>
+          {PHONES.map((phone) => (
+            <a key={phone} href={telHref(phone)} className="block text-muted hover:text-white">
+              {phone}
+            </a>
+          ))}
+
+          <p className="pt-3 font-medium text-white">{t.footer.social}</p>
+          {SOCIALS.map((s) => (
+            <a
+              key={s.name}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-muted hover:text-white"
+            >
+              {s.name} · {s.handle}
+            </a>
+          ))}
         </div>
       </div>
 
