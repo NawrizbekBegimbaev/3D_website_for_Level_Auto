@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { PHONES, SOCIALS, telHref } from "@/data/contacts";
 import { useLocale } from "@/i18n/locale-context";
+import { YandexMap } from "./YandexMap";
 
 export function Footer() {
   const { t } = useLocale();
@@ -15,7 +16,7 @@ export function Footer() {
 
   return (
     <footer className="border-t border-border bg-surface/40">
-      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:grid-cols-3">
+      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-3">
           <Logo className="h-14 w-auto" />
           <p className="max-w-xs text-sm text-muted">{t.footer.tagline}</p>
@@ -50,6 +51,11 @@ export function Footer() {
             </a>
           ))}
         </div>
+
+        <YandexMap
+          title={`LevelAuto — ${t.footer.address}`}
+          className="aspect-square w-full max-w-[240px] lg:max-w-none"
+        />
       </div>
 
       <div className="border-t border-border">

@@ -7,7 +7,9 @@
   --surface-2: #17171b;
   --border: #26262c;
   --foreground: #f4f4f5;
-  --muted: #a1a1aa;
+  /* Secondary text. Bumped from #a1a1aa for readability on the near-black bg —
+     ~7:1 contrast (WCAG AAA for body). Used site-wide via `text-muted`. */
+  --muted: #c2c2cb;
   --accent: #dc2626; /* red */
   --accent-hover: #ef4444;
   --secondary: #2563eb; /* blue */

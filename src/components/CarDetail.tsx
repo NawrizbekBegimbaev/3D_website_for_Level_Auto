@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { motion } from "framer-motion";
 import type { Car } from "@/data/cars";
 import { useLocale } from "@/i18n/locale-context";
 import { formatMoney, formatYears } from "@/lib/format";
 import { ContactForm } from "./ContactForm";
+import { CarGallery } from "./CarGallery";
 
 export function CarDetail({ car }: { car: Car }) {
   const { t, locale } = useLocale();
@@ -27,29 +26,7 @@ export function CarDetail({ car }: { car: Car }) {
       </Link>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className={`relative flex aspect-[16/11] items-center justify-center overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${car.gradient}`}
-        >
-          <span className="text-6xl font-semibold tracking-tight text-white/10">{car.brand}</span>
-          {car.image && (
-            <Image
-              src={car.image}
-              alt={`${car.brand} ${car.model}`}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-          )}
-          {car.featured && (
-            <span className="absolute left-4 top-4 rounded-full bg-accent px-3 py-1 text-xs font-medium text-white">
-              {t.featured.title}
-            </span>
-          )}
-        </motion.div>
+        <CarGallery car={car} />
 
         <div>
           <p className="text-sm uppercase tracking-wide text-accent">{car.brand}</p>

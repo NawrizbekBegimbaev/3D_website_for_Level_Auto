@@ -25,6 +25,7 @@ import { formatMoney, formatYears } from "@/lib/format";
 import { useLocale } from "@/i18n/locale-context";
 import { ContactForm } from "./ContactForm";
 import { Logo } from "./Logo";
+import { YandexMap } from "./YandexMap";
 
 const MODEL_URL = "/models/zeekr_7x_2025_v4.glb";
 
@@ -472,6 +473,10 @@ export function CarShowcase() {
                       {s.name} · {s.handle}
                     </a>
                   ))}
+                </div>
+
+                <div className="mt-6">
+                  <YandexMap title={`LevelAuto — ${t.footer.address}`} className="h-44" />
                 </div>
 
                 <div className="mt-8 flex flex-col gap-1 border-t border-white/15 pt-4 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">

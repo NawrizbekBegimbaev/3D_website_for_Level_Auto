@@ -31,6 +31,11 @@ export type Dict = {
     back: string;
     warranty: string;
     offer: string;
+    /** Заголовки блоков в карточке: выбор цвета кузова и дисков. */
+    color: string;
+    wheels: string;
+    /** Демо-названия цветов (чёрный/белый/серебристый), пока нет реальных фото. */
+    demoColors: [string, string, string];
     /** Валюта прайса для сумовых цен. */
     uzs: string;
     /** Формы слова «год» для Intl.PluralRules (ru: год/года/лет). */
@@ -80,10 +85,12 @@ export const dictionaries: Record<Locale, Dict> = {
       power: "Мощность", year: "Год", hp: "л.с.",
       request: "Оставить заявку", back: "Назад к каталогу",
       warranty: "Гарантия", offer: "В подарок", uzs: "сум",
+      color: "Цвет кузова", wheels: "Диски",
+      demoColors: ["Чёрный", "Белый", "Серебристый"],
       years: { one: "год", few: "года", many: "лет" },
     },
     contact: { title: "Оставьте заявку", subtitle: "Перезвоним в течение 15 минут в рабочее время.", name: "Имя", phone: "Телефон", message: "Сообщение (необязательно)", send: "Отправить заявку", success: "Спасибо! Мы свяжемся с вами в ближайшее время.", sending: "Отправляем…", error: "Не удалось отправить заявку. Позвоните нам: +998 90 124 54 55" },
-    footer: { tagline: "Ваш уровень. Ваш автомобиль.", rights: "Все права защищены.", address: "Ташкент, Узбекистан", social: "Мы в сети" },
+    footer: { tagline: "Ваш уровень. Ваш автомобиль.", rights: "Все права защищены.", address: "Ташкент, ул. Гавхар, 63", social: "Мы в сети" },
   },
   uz: {
     nav: { catalog: "Katalog", about: "Biz haqimizda", contact: "Aloqa" },
@@ -124,10 +131,12 @@ export const dictionaries: Record<Locale, Dict> = {
       power: "Quvvat", year: "Yil", hp: "o.k.",
       request: "Ariza qoldirish", back: "Katalogga qaytish",
       warranty: "Kafolat", offer: "Sovg‘aga", uzs: "so‘m",
+      color: "Kuzov rangi", wheels: "Disklar",
+      demoColors: ["Qora", "Oq", "Kumushrang"],
       years: { one: "yil", few: "yil", many: "yil" },
     },
     contact: { title: "Ariza qoldiring", subtitle: "Ish vaqtida 15 daqiqada qo‘ng‘iroq qilamiz.", name: "Ism", phone: "Telefon", message: "Xabar (ixtiyoriy)", send: "Ariza yuborish", success: "Rahmat! Tez orada bog‘lanamiz.", sending: "Yuborilmoqda…", error: "Arizani yuborib bo‘lmadi. Qo‘ng‘iroq qiling: +998 90 124 54 55" },
-    footer: { tagline: "Sizning darajangiz. Sizning avtomobilingiz.", rights: "Barcha huquqlar himoyalangan.", address: "Toshkent, O‘zbekiston", social: "Ijtimoiy tarmoqlarda" },
+    footer: { tagline: "Sizning darajangiz. Sizning avtomobilingiz.", rights: "Barcha huquqlar himoyalangan.", address: "Toshkent, Gavhar ko‘chasi, 63", social: "Ijtimoiy tarmoqlarda" },
   },
   en: {
     nav: { catalog: "Catalog", about: "About", contact: "Contact" },
@@ -168,9 +177,11 @@ export const dictionaries: Record<Locale, Dict> = {
       power: "Power", year: "Year", hp: "hp",
       request: "Request a quote", back: "Back to catalog",
       warranty: "Warranty", offer: "Included", uzs: "UZS",
+      color: "Body colour", wheels: "Wheels",
+      demoColors: ["Black", "White", "Silver"],
       years: { one: "year", few: "years", many: "years" },
     },
     contact: { title: "Request a quote", subtitle: "We call back within 15 minutes during business hours.", name: "Name", phone: "Phone", message: "Message (optional)", send: "Send request", success: "Thank you! We will contact you shortly.", sending: "Sending…", error: "Could not send your request. Please call us: +998 90 124 54 55" },
-    footer: { tagline: "Your level. Your car.", rights: "All rights reserved.", address: "Tashkent, Uzbekistan", social: "Follow us" },
+    footer: { tagline: "Your level. Your car.", rights: "All rights reserved.", address: "Tashkent, Gavhar St, 63", social: "Follow us" },
   },
 };

@@ -10,6 +10,25 @@
 export type Currency = "usd" | "uzs";
 export type Offer = "laminate" | "tint" | "tintLaminate";
 
+/** Вариант цвета кузова. `hex` — кружок-образец в UI; `image` — фото машины
+ *  именно в этом цвете (кладём в /public/cars, ставим когда файл на месте). */
+export interface ColorOption {
+  /** Подпись под образцом: «Чёрный», «Snow White»… */
+  name: string;
+  /** Цвет кружка-свотча (#rrggbb). Для металликов берём близкий оттенок. */
+  hex: string;
+  /** Фото всей машины в этом цвете. */
+  image: string;
+}
+
+/** Вариант дисков — фото самого диска (крупный план). */
+export interface WheelOption {
+  /** Подпись: «19" аэро», «21 DISK»… */
+  name: string;
+  /** Фото диска. Нет фото — в UI покажется чип с подписью (демо/заглушка). */
+  image?: string;
+}
+
 export interface Car {
   id: string;
   brand: string;
@@ -31,6 +50,20 @@ export interface Car {
    */
   image?: string;
   featured?: boolean;
+  /**
+   * Доступные цвета кузова. Пусто, пока не пришлют фото. Заполнять по образцу:
+   *   colors: [
+   *     { name: "Чёрный", hex: "#111114", image: "/cars/roewe-m7-black.jpg" },
+   *     { name: "Белый",  hex: "#e8e8ea", image: "/cars/roewe-m7-white.jpg" },
+   *   ]
+   * Первый цвет — «основной», показывается по умолчанию (если задан, заменяет `image`).
+   */
+  colors?: ColorOption[];
+  /**
+   * Варианты дисков. Пусто, пока не пришлют фото. Заполнять по образцу:
+   *   wheels: [{ name: '21"', image: "/cars/zeekr-001-wheel-21.jpg" }]
+   */
+  wheels?: WheelOption[];
 }
 
 /** Дата прайса — показываем в каталоге, чтобы цены не выглядели вечными. */
